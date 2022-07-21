@@ -1,5 +1,7 @@
 import math
 
+from sqlalchemy import false, true
+
 nextPlayer = {
     'x': 'o',
     "o": 'x'
@@ -19,6 +21,25 @@ class Game():
     def printBoard(self):
         for i in range(3):
             print(self.board[i])
+
+def tied(board):
+    openSlots = getOpenSlots(board)
+    for openSlot in openSlots:
+        if board[openSlot[0]][openSlot[1]] == 0:
+            return False
+    return True
+
+def trapSet(board, player):
+    openSlots = getOpenSlots(board)
+    sum = 0
+    for openSlot in openSlots:
+        board[openSlot[0]][openSlot[1]] = player
+        if isWon(board):
+            sum += 1
+        board[openSlot[0]][openSlot[1]] = 0 
+    if sum >= 2:
+        return True
+    return False
 
 def isWon(board):
 
@@ -50,37 +71,38 @@ def getOpenSlots(board):
 def getOptimalMove(board, player):
 
     openSlots = getOpenSlots(board)
-    highScore = -math.inf
-    optimalMove = None
 
     # if there is one open slot it is the optimal move
     if len(openSlots) == 1:
-        openSlot = openSlots[0]
-        board[openSlot[0]][openSlot[1]] = player
-        if isWon(board) == 'o':
-            board[openSlot[0]][openSlot[1]] = 0
-            return(1, openSlot)
-        if isWon(board) == 'x':
-            board[openSlot[0]][openSlot[1]] = 0
-            return(-1, openSlot)
-        else:
-            board[openSlot[0]][openSlot[1]] = 0
-            return(0, openSlot)
+        return(openSlots[0])
+
+    if len(openSlots) == 8 and board[1][1] == 0:
+        return(1,1)
     
-    # otherwise loop through all the other slots and check them all
+    # if we can win then we should
     for openSlot in openSlots:
         board[openSlot[0]][openSlot[1]] = player
-        score, move = getOptimalMove(board, nextPlayer[player])
+        if isWon(board):
+            return openSlot
         board[openSlot[0]][openSlot[1]] = 0
 
-        # we invert the score because it is for the other player
-        # ie if a 1 is returned, this means the other guy will win, so we want it to show as a loss
-        score *= -1
-        if score > highScore:
-            highScore = score
-            optimalMove = move
+    # if they can win then we block
+    for openSlot in openSlots:
+        board[openSlot[0]][openSlot[1]] = nextPlayer[player]
+        if isWon(board):
+            return openSlot
+        board[openSlot[0]][openSlot[1]] = 0
 
-    return highScore, optimalMove
+
+    # if they can set a trap (two possible new wins in one move) then we should block
+    for openSlot in openSlots:
+        board[openSlot[0]][openSlot[1]] = nextPlayer[player]
+        if trapSet(board, nextPlayer[player]):
+            return openSlot
+        board[openSlot[0]][openSlot[1]] = 0
+
+    # else move randomly
+    return openSlots[0]
 
 def flatten(coords):
     return(coords[0])*3+1+coords[1]
@@ -92,7 +114,7 @@ def main():
     while not isWon(game.board):
         
         if player == 'o':
-            optimalMove = flatten(getOptimalMove(game.board.copy(), "o")[1])
+            optimalMove = flatten(getOptimalMove(game.board.copy(), "o"))
             print("optimal move is:", optimalMove)
             game.step(optimalMove, player)
         
@@ -101,9 +123,8 @@ def main():
             while invalidChoice:
                 choice = int(input("Enter your choice (1-9): "))
                 choiceRow, choiceCol = math.floor((choice-1)/3), (choice-1)%3
-                print(choiceRow, choiceCol)
                 if game.board[choiceRow][choiceCol]:
-                   print("Invalid Choice")
+                   print("Invalid Choice!")
                 else:
                    invalidChoice = False
             game.step(choice, player)
@@ -112,6 +133,9 @@ def main():
 
         if isWon(game.board):
             print("Winner is "+player+"!!")
+        if tied(game.board):
+            print("The game is a tie!")
+            return
         
         player = nextPlayer[player]
 
