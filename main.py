@@ -50,8 +50,8 @@ def getOpenSlots(board):
 
 def minimax(board, player, depth):
     
-    if isWon(board):
-        winner = isWon(board)
+    winner = isWon(board)
+    if winner:
         return points[winner]
     if isTied(board):
         return 0
@@ -86,7 +86,7 @@ def main():
     
     board = [['','',''],['','',''],['','','']]
 
-    player = 'o'
+    player = 'x'
     while True:
 
         if player == 'o':
